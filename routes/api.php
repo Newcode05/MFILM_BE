@@ -27,3 +27,4 @@ Route::get('/getVideo/type/{type}', [VideoController::class, 'getVideoByType']);
 Route::get('/getVideoBy', [VideoController::class, 'getVideo']);
 
 Route::post('/upload', [VideoController::class, 'upVideo']);
+Route::get('/video/{filename}', [VideoController::class, 'stream']);

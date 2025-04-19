@@ -12,6 +12,7 @@ use App\Models\Season;
 use App\Models\Episode;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Response;
 
 
 class VideoController extends Controller
@@ -31,7 +32,7 @@ class VideoController extends Controller
             $duration = $request->input('duration');
             $description = $request->input('description');
             $season = $request->input('season');
-            $categories = explode(',', $request->input('categories'));
+            $categories =  $request->input('categories');
             $video = Video::create([
                 'title' => $title,
                 'duration' => $duration,
@@ -46,7 +47,7 @@ class VideoController extends Controller
                     ]);
                 }
                 $season = Season::create([
-                    'season_name' => 'Phần 1',
+                    'season_name' => "Phần 1",
                     'season_order' => 1,
                     'video_id' => $video->id
                 ]);
@@ -79,10 +80,15 @@ class VideoController extends Controller
         }, 'categories' => function ($query) {
             $query->orderBy('id', 'asc');
         }])->where('id', $id)->first();
+        $vid_src = Episode::where('video_id', $id)
+            ->where('season_id', $video->season[0]->id)
+            ->where('episode_order', 1)
+            ->first()->video_path;
         if ($video) {
             return response()->json([
                 'get_video_status' => 'success',
-                'video' => $video
+                'video' => $video,
+                'src' => $vid_src,
             ]);
         }
         return response()->json([
@@ -118,7 +124,8 @@ class VideoController extends Controller
                     'id' => $vid->id,
                     'title' => $vid->title,
                     'duration' => $vid->duration,
-                    'description' => $vid->description
+                    'description' => $vid->description,
+                    'poster_url' => $vid->poster_url,
                 ];
                 $videos[] = $data;
             }
@@ -130,6 +137,50 @@ class VideoController extends Controller
             return response()->json([
                 'get_video_status' => 'fail'
             ]);
+        }
+    }
+    public function stream(Request $request, $filename)
+    {
+        $path = storage_path('app/public/video/' . $filename);
+        if (!file_exists($path)) {
+            abort(404);
+        } else {
+            $fileSize = filesize($path);
+            $range = $this->getRange($request, $fileSize);
+            if ($range) {
+                $length = $range[1] - $range[0] + 1;
+                $file = fopen($path, 'rb');
+                fseek($file, $range[0]);
+                $content = fread($file, $length);
+                fclose($file);
+                $headers = [
+                    'Content-Type' => 'video/mp4',
+                    'Content-Length' => $length,
+                    'Content-Range' => "bytes $range[0]-$range[1]/$fileSize",
+                    'Accept-Ranges' => 'bytes'
+                ];
+                return Response::make($content, 206, $headers);
+            } else {
+                $content = file_get_contents($path);
+                $headers = [
+                    'Content-Type' => 'video/mp4',
+                    'Content-Length' => $fileSize,
+                    'Accept-Ranges' => 'bytes'
+                ];
+                return Response::make($content, 200, $headers);
+            }
+        }
+    }
+    public function getRange(Request $request, $fileSize)
+    {
+        if ($request->header('Range')) {
+            $range = explode('=', $request->header('Range'), 2);
+            list($start, $end) = explode('-', $range[1], 2);
+            $start = intval($start);
+            $end = $end ? intval($end) : $fileSize - 1;
+            return [$start, $end];
+        } else {
+            return null;
         }
     }
 }

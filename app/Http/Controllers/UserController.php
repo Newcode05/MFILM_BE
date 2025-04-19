@@ -25,7 +25,7 @@ class UserController extends Controller
                     'user' => [
                         'id' => $user->id,
                         'name' => $username,
-                        'email' => $email,
+                        'email' => $email
                     ]
                 ])
                 ->cookie('id', $user->id, 60 * 10);

@@ -11,6 +11,7 @@ class Video extends Model
     protected $fillable = [
         'title',
         'duration',
+        'description',
     ];
     protected $hidden = [
         'created_at',

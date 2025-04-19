@@ -16,6 +16,7 @@ return new class extends Migration
             $table->string('title', 255)->nullable();
             $table->float('duration', 5)->nullable();
             $table->text('description')->nullable();
+            $table->text('poster_path')->nullable();
             $table->timestamps();
         });
     }
